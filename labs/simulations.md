@@ -12,7 +12,6 @@ This document provides a comprehensive and exhaustive summary of the stochastic 
 5. [Lecture 5: SDE Errors, Divergences, and telegraphic Noise](#lecture-5-sde-errors-divergences-and-telegraphic-noise)
 6. [Lecture 6: Non-Markovian Systems & Memory Kernels](#lecture-6-non-markovian-systems--memory-kernels)
 7. [Lecture 7: Control Theory in Dynamical & Stochastic Systems](#lecture-7-control-theory-in-dynamical--stochastic-systems)
-8. [Comprehensive Bug Log and Corrections](#comprehensive-bug-log-and-corrections)
 
 ---
 
@@ -81,8 +80,6 @@ The state transitions are state-dependent and count-dependent (where $K$ is the 
 *   **Deactivated to Activated ($0 \to 1$):** $P_1(K) = \frac{\rho_1}{2} K$ if $K \in \{1, 2\}$, else $0$.
 *   **Activated to Deactivated ($1 \to 0$):** $P_0(K) = \frac{\rho_2}{2} (K-2)$ if $K \in \{3, 4\}$, else $0$.
 
-*Note: The original notebook code contained an indexing bug that checked sequential loop indices instead of the actual neighboring cell states. This has been corrected in [models.py](file:///D:/university/stochastic-modelling/labs/models.py).*
-
 ---
 
 ## Lecture 2: Continuous-Time Markov Chains (CTMC) & Gillespie SSA
@@ -94,7 +91,7 @@ For a finite CTMC of $S$ states, the probability vector $\mathbf{P}(t)$ evolves 
 
 $$ \frac{d\mathbf{P}(t)}{dt} = \mathbf{P}(t)\mathbf{Q} \quad \implies \quad \mathbf{P}(t) = \mathbf{P}(0) \exp(\mathbf{Q}t) $$
 
-*   **Steady State:** Systems with fully connected networks (no absorbent states) converge rapidly to an invariant measure $\boldsymbol{\pi}\mathbf{Q} = 0$.
+*   **Steady State:** Systems with fully connected networks (no absorbent states) converge rapidly to an invariant measure $\mathbf{\pi Q} = 0$.
 
 ### 2. Trajectory Sampling: Gillespie SSA
 For systems with large or infinite state spaces, the **Gillespie Stochastic Simulation Algorithm (SSA)** yields exact trajectories:
@@ -115,7 +112,6 @@ CRNs model the interactions of molecular populations. In continuous time, propen
 *   $A \xrightarrow{\mu} \emptyset$: propensity $a_3 = \mu \frac{N_A}{N_{\text{tot}}}$
 *   $C \xrightarrow{\nu} \emptyset$: propensity $a_4 = \nu \frac{N_C}{N_{\text{tot}}}$
 
-*Note: The original notebook code contained an index mismatch for reaction 3, which degraded species B instead of species A. This is fixed in [models.py](file:///D:/university/stochastic-modelling/labs/models.py).*
 
 ---
 
@@ -267,46 +263,5 @@ $$ v_i^{t+1} = w v_i^t + c_1 r_1 (pbest_i - x_i^t) + c_2 r_2 (gbest - x_i^t) $$
 
 ---
 
-## Comprehensive Bug Log and Corrections
-
-Several critical bugs and typos present in the laboratory notebooks were identified and fixed in the code files:
-
-### 1. Cellular Automata Neighbor Evaluation Indexing
-*   **Location:** `CAsystem.computeTraj` ([1-dtmc.ipynb])
-*   **Symptom:** The simulator checked the loop index `k` rather than the neighbor state index `self._adjList[j][k]`, causing the automaton to ignore its actual spatial neighbors.
-*   **Correction in models.py:**
-    ```python
-    # Bug fixed: n_idx fetches the correct neighbor index from self._adjList[cell]
-    for n_idx in self._adjList[cell]:
-        if traj[n_idx, step - 1] == 1:
-            K += 1
-    ```
-
-### 2. Chemical Reaction Network SSA Update Mismatch
-*   **Location:** `CRN_SIM.simulationSSA` ([2-ctmc.ipynb])
-*   **Symptom:** When reaction 3 ($A \xrightarrow{\mu} \emptyset$) was selected, the code decremented species B (`state[1] -= 1`) instead of species A (`state[0] -= 1`).
-*   **Correction in models.py:**
-    ```python
-    elif next_R == 3:
-        # Bug fixed: Decrement species A (index 0) instead of B (index 1)
-        state[0] -= 1
-    ```
-
-### 3. Memory Kernel RK4 Integration Variable Copying
-*   **Location:** `EvoGameEFK.__RK4` ([6-errors.ipynb])
-*   **Symptom:** During the computation of the coefficient $k_3$, the code passed `y_n[0]` twice, neglecting the memory state variable `y_n[1]`.
-*   **Correction in models.py & algorithms.py:** A generic system RK4 solver was implemented in `algorithms.py` which correctly updates all dimensions vectorially, eliminating manual index copying errors:
-    ```python
-    k_3x = f_1(y_n[0] + h * k_2x / 2.0, y_n[1] + h * k_2y / 2.0)
-    k_3y = f_2(y_n[0] + h * k_2x / 2.0, y_n[1] + h * k_2y / 2.0)
-    ```
-
-### 4. Dynamic Control Time-Window Mapping
-*   **Location:** `Harvest.__RK4` ([7-control-theory.ipynb])
-*   **Symptom:** The index of the piecewise-constant control parameters vector `_k` was mapped using `int((t_n/h)%10)`. This modulo operator restricted the index to $\{0, \dots, 9\}$ and looped back, ignoring the final control windows in the 12-dimensional vector.
-*   **Correction in models.py:**
-    ```python
-    # Bug fixed: Map the current step to the correct region index 0 to 11
-    step_idx = int(round(t_n / h))
-    k_val = self._k[min(step_idx // 10, len(self._k) - 1)]
-    ```
+**Author**: Enrico Savorgnan, Google Antigravity CLI \
+**Date**: 06/06/2026
